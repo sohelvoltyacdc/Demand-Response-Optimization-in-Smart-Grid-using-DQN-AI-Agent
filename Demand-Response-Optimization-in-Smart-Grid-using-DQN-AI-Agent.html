@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DQN Demand Response — 3-Layer System | UU EEE Thesis</title>
+    <style>
+        /* ── Reset & Base ── */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            background: #F1F5F9;
+            color: #1E293B;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #E2E8F0;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94A3B8;
+            border-radius: 4px;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: #0F172A;
+            border-bottom: 1px solid #1E293B;
+            padding: 0 24px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .logo {
+            width: 36px;
+            height: 36px;
+            background: #3B82F6;
+            color: #fff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .header-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #F8FAFC;
+            letter-spacing: 0.3px;
+        }
+        .header-sub {
+            font-size: 11px;
+            color: #94A3B8;
+            margin-top: 2px;
+        }
+        .live-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 30px;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: #E2E8F0;
+            font-weight: 600;
+        }
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: #22C55E;
+            border-radius: 50%;
+            animation: pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+            }
+        }
+        #clock {
+            font-size: 14px;
+            color: #E2E8F0;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── Layer Tabs ── */
+        .layer-tabs {
+            display: flex;
+            background: #FFFFFF;
+            border-bottom: 1px solid #E2E8F0;
+            position: sticky;
+            top: 60px;
+            z-index: 99;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .ltab {
+            flex: 1;
+            padding: 12px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            color: #64748B;
+            letter-spacing: 0.3px;
+        }
+        .ltab:hover {
+            background: #F8FAFC;
+            color: #1E293B;
+        }
+        .ltab.active-l1 {
+            color: #1E293B;
+            border-bottom-color: #3B82F6;
+            background: #F8FAFC;
+        }
+        .ltab.active-l2 {
+            color: #1E293B;
+            border-bottom-color: #8B5CF6;
+            background: #F8FAFC;
+        }
+        .ltab.active-l3 {
+            color: #1E293B;
+            border-bottom-color: #22C55E;
+            background: #F8FAFC;
+        }
+        .layer-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-right: 6px;
+            font-weight: 700;
+            background: #E2E8F0;
+            color: #475569;
+        }
+        .lb1 {
+            background: #DBEAFE;
+            color: #1D4ED8;
+        }
+        .lb2 {
+            background: #EDE9FE;
+            color: #6D28D9;
+        }
+        .lb3 {
+            background: #DCFCE7;
+            color: #15803D;
+        }
+
+        /* ── Panels ── */
+        .panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .panel.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── Grids ── */
+        .g2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .g3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+        .g4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+        .g23 {
+            display: grid;
+            grid-template-columns: 2fr 3fr;
+            gap: 16px;
+        }
+        .g32 {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 16px;
+        }
+        .wrap {
+            padding: 20px;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 18px 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            transition: box-shadow 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+        .card-hd {
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-hd .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #3B82F6;
+        }
+        .card.l1-card {
+            border-left: 4px solid #3B82F6;
+        }
+        .card.l2-card {
+            border-left: 4px solid #8B5CF6;
+        }
+        .card.l3-card {
+            border-left: 4px solid #22C55E;
+        }
+
+        /* ── KPI ── */
+        .kpi {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 14px 10px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+        }
+        .kpi-val {
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #0F172A;
+        }
+        .kpi-lbl {
+            font-size: 11px;
+            color: #64748B;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .kpi-sub {
+            font-size: 12px;
+            margin-top: 3px;
+            font-weight: 500;
+        }
+
+        /* ── Inputs ── */
+        .field {
+            margin-bottom: 12px;
+        }
+        .field label {
+            font-size: 11px;
+            color: #475569;
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .field input,
+        .field select {
+            width: 100%;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            color: #1E293B;
+            padding: 8px 12px;
+            font-size: 13px;
+            outline: none;
+            transition: border 0.2s;
+            font-family: inherit;
+        }
+        .field input:focus,
+        .field select:focus {
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 4px;
+            background: #E2E8F0;
+            outline: none;
+            padding: 0;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3B82F6;
+            cursor: pointer;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider-row span {
+            font-size: 13px;
+            color: #1E293B;
+            font-weight: 600;
+            min-width: 44px;
+            text-align: right;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-blue {
+            background: #3B82F6;
+            color: #FFFFFF;
+        }
+        .btn-blue:hover {
+            background: #2563EB;
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.25);
+        }
+        .btn-purple {
+            background: #8B5CF6;
+            color: #FFFFFF;
+        }
+        .btn-purple:hover {
+            background: #7C3AED;
+            box-shadow: 0 4px 8px rgba(139, 92, 246, 0.25);
+        }
+        .btn-green {
+            background: #22C55E;
+            color: #FFFFFF;
+        }
+        .btn-green:hover {
+            background: #16A34A;
+            box-shadow: 0 4px 8px rgba(34, 197, 94, 0.25);
+        }
+        .btn-red {
+            background: #EF4444;
+            color: #FFFFFF;
+        }
+        .btn-red:hover {
+            background: #DC2626;
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.25);
+        }
+        .btn-full {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Badges ── */
+        .badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .b-red {
+            background: #FEE2E2;
+            color: #B91C1C;
+        }
+        .b-green {
+            background: #DCFCE7;
+            color: #15803D;
+        }
+        .b-amber {
+            background: #FEF3C7;
+            color: #B45309;
+        }
+        .b-blue {
+            background: #DBEAFE;
+            color: #1D4ED8;
+        }
+        .b-purple {
+            background: #EDE9FE;
+            color: #6D28D9;
+        }
+        .b-gray {
+            background: #F1F5F9;
+            color: #475569;
+        }
+
+        /* ── Rows ── */
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .row:last-child {
+            margin-bottom: 0;
+        }
+        .rlbl {
+            font-size: 12px;
+            color: #475569;
+            flex: 1;
+        }
+        .rval {
+            font-size: 13px;
+            font-weight: 700;
+            min-width: 80px;
+            text-align: right;
+            color: #0F172A;
+        }
+        .bar-t {
+            flex: 0 0 90px;
+            height: 6px;
+            background: #E2E8F0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .bar-f {
+            height: 6px;
+            border-radius: 4px;
+            transition: width 0.4s;
+        }
+
+        /* ── Timeline ── */
+        .timeline {
+            display: flex;
+            gap: 3px;
+            height: 32px;
+        }
+        .ts {
+            flex: 1;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            position: relative;
+        }
+        .ts:hover {
+            opacity: 0.85;
+            transform: scaleY(1.08);
+        }
+        .ts.cur {
+            outline: 2px solid #0F172A;
+            outline-offset: 2px;
+            z-index: 2;
+        }
+
+        /* ── Load Items ── */
+        .load-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        .load-item:last-child {
+            margin-bottom: 0;
+        }
+        .li-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+            background: #E2E8F0;
+        }
+        .li-name {
+            font-size: 13px;
+            font-weight: 600;
+            flex: 1;
+            color: #0F172A;
+        }
+        .li-sub {
+            font-size: 11px;
+            color: #64748B;
+        }
+        .li-status {
+            font-size: 12px;
+            font-weight: 700;
+            text-align: right;
+        }
+        .li-power {
+            font-size: 11px;
+            color: #64748B;
+        }
+
+        /* ── Notifications ── */
+        .notif {
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            border-left: 4px solid #3B82F6;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-left-width: 4px;
+        }
+        .notif:last-child {
+            margin-bottom: 0;
+        }
+        .notif.alert {
+            border-left-color: #EF4444;
+            background: #FEF2F2;
+        }
+        .notif.warn {
+            border-left-color: #F59E0B;
+            background: #FFFBEB;
+        }
+        .notif.info {
+            border-left-color: #3B82F6;
+            background: #EFF6FF;
+        }
+        .notif.ok {
+            border-left-color: #22C55E;
+            background: #F0FDF4;
+        }
+        .notif-hd {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .notif-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0F172A;
+        }
+        .notif-time {
+            font-size: 11px;
+            color: #64748B;
+        }
+        .notif-body {
+            font-size: 12px;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        /* ── Table ── */
+        .tbl {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .tbl th {
+            background: #F8FAFC;
+            color: #475569;
+            font-weight: 700;
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 2px solid #E2E8F0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .tbl td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #F1F5F9;
+            color: #1E293B;
+        }
+        .tbl tr:hover td {
+            background: #F8FAFC;
+        }
+
+        /* ── Forms / Sections ── */
+        .form-section {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+        }
+        .form-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1E293B;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .meter-box {
+            background: #F8FAFC;
+            border: 1px dashed #CBD5E1;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        .meter-num {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0F172A;
+            font-family: monospace;
+            letter-spacing: 1px;
+        }
+        .meter-lbl {
+            font-size: 10px;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        /* ── AI thinking ── */
+        .ai-think {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #475569;
+        }
+        .think-dots span {
+            animation: blink 1.4s infinite;
+            display: inline-block;
+        }
+        .think-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .think-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes blink {
+            0%,
+            80%,
+            100% {
+                opacity: 0;
+            }
+            40% {
+                opacity: 1;
+            }
+        }
+
+        /* ── Section header ── */
+        .sec {
+            font-size: 12px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin: 18px 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sec::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #E2E8F0;
+        }
+
+        /* ── Status strip ── */
+        .status-strip {
+            padding: 8px 24px;
+            background: #FFFFFF;
+            border-top: 1px solid #E2E8F0;
+            font-size: 12px;
+            color: #64748B;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        /* ── Misc ── */
+        #override-msg {
+            font-size: 12px;
+            color: #15803D;
+            margin-top: 6px;
+            display: none;
+            font-weight: 500;
+        }
+        .action-card {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .action-card:hover {
+            border-color: #3B82F6;
+            background: #EFF6FF;
+        }
+        .action-card.selected {
+            border-color: #8B5CF6;
+            background: #EDE9FE;
+        }
+        .ac-num {
+            font-size: 18px;
+            font-weight: 800;
+            color: #CBD5E1;
+            float: right;
+        }
+        .ac-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0F172A;
+        }
+        .ac-desc {
+            font-size: 11px;
+            color: #64748B;
+        }
+        .ac-q {
+            font-size: 11px;
+            color: #8B5CF6;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        /* ── Responsive tweaks ── */
+        @media (max-width: 768px) {
+            .g2,
+            .g3,
+            .g4,
+            .g23,
+            .g32 {
+                grid-template-columns: 1fr;
+            }
+            .header-title {
+                font-size: 13px;
+            }
+            .header-sub {
+                display: none;
+            }
+            .wrap {
+                padding: 12px;
+            }
+            .ltab {
+                font-size: 11px;
+                padding: 10px 8px;
+            }
+            .kpi-val {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">⚡</div>
+            <div>
+                <div class="header-title">GridAI Demand Response — 3-Layer System</div>
+                <div class="header-sub">Uttara University EEE | BSc Thesis | Nayeem · Anis Rahman · Sohel Hossain · Abu Hanif | Supervisor: Md Siam Ahmed</div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+            <div id="clock">00:00:00</div>
+            <div class="live-pill"><div class="pulse"></div>DQN Agent Live</div>
+        </div>
+    </div>
+
+    <!-- LAYER TABS -->
+    <div class="layer-tabs">
+        <div class="ltab active-l1" id="tab-l1" onclick="showLayer(1)"><span class="layer-badge lb1">L1</span>UTILITY LAYER</div>
+        <div class="ltab" id="tab-l2" onclick="showLayer(2)"><span class="layer-badge lb2">L2</span>AI AGENT LAYER</div>
+        <div class="ltab" id="tab-l3" onclick="showLayer(3)"><span class="layer-badge lb3">L3</span>USER LAYER</div>
+    </div>
+
+    <!-- ═══════════════ LAYER 1 — UTILITY ═══════════════ -->
+    <div class="panel active" id="panel-l1">
+        <div class="wrap">
+
+            <!-- Simulation Input -->
+            <div class="sec">⚡ Simulation Input — Manual Data Entry</div>
+            <div class="card l1-card" style="margin-bottom:16px">
+                <div class="card-hd"><div class="dot"></div>DESCO/BPDB Grid Parameters (Input করো)</div>
+                <div class="g3">
+                    <div>
+                        <div class="field"><label>Total Generation (MW)</label><input type="number" id="i-gen" value="2840" oninput="liveUpdate()"></div>
+                        <div class="field"><label>Current Demand (MW)</label><input type="number" id="i-dem" value="2610" oninput="liveUpdate()"></div>
+                        <div class="field"><label>Tariff Category</label>
+                            <select id="i-tariff" onchange="liveUpdate()">
+                                <option value="E">Cat-E: Commercial (৳4.05/৳8.45)</option>
+                                <option value="C">Cat-C: Small Industry (৳3.50/৳5.95)</option>
+                                <option value="F">Cat-F: Medium Voltage (৳3.43/৳7.12)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="field"><label>Simulation Hour (0-23) — <span id="hr-show" style="color:#2563EB;">17:00</span></label>
+                            <div class="slider-row"><input type="range" id="i-hour" min="0" max="23" value="17" oninput="document.getElementById('hr-show').textContent=this.value+':00';liveUpdate()"><span id="hr-v">17</span></div>
+                        </div>
+                        <div class="field"><label>Load Shedding Risk % — <span id="shed-show" style="color:#DC2626;">20%</span></label>
+                            <div class="slider-row"><input type="range" id="i-shed" min="0" max="60" value="20" oninput="document.getElementById('shed-show').textContent=this.value+'%';document.getElementById('shed-v').textContent=this.value;liveUpdate()"><span id="shed-v">20</span></div>
+                        </div>
+                        <div class="field"><label>Generation Cost (৳/kWh)</label><input type="number" id="i-gencost" value="3.20" step="0.1" oninput="liveUpdate()"></div>
+                    </div>
+                    <div>
+                        <div class="field"><label>Renewable Mix (%)</label>
+                            <div class="slider-row"><input type="range" id="i-renew" min="0" max="60" value="18" oninput="document.getElementById('renew-v').textContent=this.value+'%';liveUpdate()"><span id="renew-v">18%</span></div>
+                        </div>
+                        <div class="field"><label>Reserve Margin (MW)</label><input type="number" id="i-reserve" value="230" oninput="liveUpdate()"></div>
+                        <div class="field"><label>Area / Zone</label>
+                            <select id="i-zone" onchange="liveUpdate()">
+                                <option value="uttara">Uttara (DESCO)</option>
+                                <option value="gulshan">Gulshan (DESCO)</option>
+                                <option value="mirpur">Mirpur (DPDC)</option>
+                                <option value="motijheel">Motijheel (DPDC)</option>
+                                <option value="gazipur">Gazipur (BPDB)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-blue btn-full" id="run-l1" onclick="runSimulation()">▶ Run Simulation — Update All Layers</button>
+            </div>
+
+            <!-- KPIs -->
+            <div class="sec">📊 Real-Time Grid Dashboard</div>
+            <div class="g4" style="margin-bottom:16px">
+                <div class="kpi"><div class="kpi-val" id="kpi-gen" style="color:#2563EB;">2,840</div><div class="kpi-lbl">Generation (MW)</div><div class="kpi-sub" id="kpi-gen-s" style="color:#16A34A;">▲ Normal</div></div>
+                <div class="kpi"><div class="kpi-val" id="kpi-dem" style="color:#D97706;">2,610</div><div class="kpi-lbl">Demand (MW)</div><div class="kpi-sub" id="kpi-dem-s" style="color:#D97706;">Peak Season</div></div>
+                <div class="kpi"><div class="kpi-val" id="kpi-stress" style="color:#DC2626;">92%</div><div class="kpi-lbl">Grid Stress</div><div class="kpi-sub"><span class="badge b-red" id="kpi-stress-b">Critical</span></div></div>
+                <div class="kpi"><div class="kpi-val" id="kpi-price" style="color:#DC2626;">৳8.45</div><div class="kpi-lbl">Current Price/kWh</div><div class="kpi-sub" id="kpi-price-s" style="color:#DC2626;">PEAK HOUR 🔴</div></div>
+            </div>
+            <div class="g4" style="margin-bottom:16px">
+                <div class="kpi"><div class="kpi-val" id="kpi-shed" style="color:#DC2626;">20%</div><div class="kpi-lbl">Shed Risk</div><div class="kpi-sub" style="color:#D97706;">Bernoulli(p)</div></div>
+                <div class="kpi"><div class="kpi-val" id="kpi-reserve" style="color:#16A34A;">230</div><div class="kpi-lbl">Reserve (MW)</div><div class="kpi-sub" id="kpi-reserve-s" style="color:#16A34A;">Adequate</div></div>
+                <div class="kpi"><div class="kpi-val" id="kpi-gencost" style="color:#7C3AED;">৳3.20</div><div class="kpi-lbl">Gen Cost/kWh</div><div class="kpi-sub" style="color:#64748B;">Production cost</div></div>
+                <div class="kpi"><div class="kpi-val" id="kpi-renew" style="color:#16A34A;">18%</div><div class="kpi-lbl">Renewable Mix</div><div class="kpi-sub" style="color:#16A34A;">Solar + Wind</div></div>
+            </div>
+
+            <!-- 24h Timeline -->
+            <div class="sec">🕐 24-Hour Load Shedding Forecast</div>
+            <div class="card l1-card" style="margin-bottom:16px">
+                <div class="card-hd"><div class="dot"></div>DESCO Zone Forecast — Click any hour to simulate</div>
+                <div class="timeline" id="timeline"></div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px">
+                    <span style="font-size:10px;color:#64748B;">00:00</span>
+                    <span style="font-size:10px;color:#64748B;">06:00</span>
+                    <span style="font-size:10px;color:#64748B;">12:00</span>
+                    <span style="font-size:10px;color:#64748B;">18:00</span>
+                    <span style="font-size:10px;color:#64748B;">23:00</span>
+                </div>
+                <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:4px;background:#22C55E;"></div><span style="font-size:11px;color:#475569;">Low risk (0-10%)</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:4px;background:#F59E0B;"></div><span style="font-size:11px;color:#475569;">Medium (10-20%)</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:4px;background:#EF4444;"></div><span style="font-size:11px;color:#475569;">High risk (>20%)</span></div>
+                </div>
+            </div>
+
+            <!-- Generation Cost Table -->
+            <div class="g2">
+                <div class="card l1-card">
+                    <div class="card-hd"><div class="dot"></div>ToU Tariff Structure</div>
+                    <table class="tbl">
+                        <tr><th>Category</th><th>Off-Peak</th><th>Peak</th><th>Difference</th></tr>
+                        <tr><td>Cat-E Commercial</td><td style="color:#16A34A;">৳4.05</td><td style="color:#DC2626;">৳8.45</td><td style="color:#D97706;">+109%</td></tr>
+                        <tr><td>Cat-C Industry</td><td style="color:#16A34A;">৳3.50</td><td style="color:#DC2626;">৳5.95</td><td style="color:#D97706;">+70%</td></tr>
+                        <tr><td>Cat-F Med. Volt</td><td style="color:#16A34A;">৳3.43</td><td style="color:#DC2626;">৳7.12</td><td style="color:#D97706;">+108%</td></tr>
+                    </table>
+                    <div style="margin-top:10px;padding:10px;background:#F8FAFC;border-radius:8px;font-size:11px;color:#475569;">
+                        Peak hours: <span style="color:#DC2626;font-weight:600;">17:00–22:59</span> | Off-peak: <span style="color:#16A34A;font-weight:600;">23:00–16:59</span>
+                    </div>
+                </div>
+                <div class="card l1-card">
+                    <div class="card-hd"><div class="dot"></div>Generation Cost Breakdown</div>
+                    <div id="gen-cost-breakdown">
+                        <div class="row"><span class="rlbl">Gas-fired plants</span><div class="bar-t"><div class="bar-f" style="width:55%;background:#F59E0B;"></div></div><span class="rval" style="color:#D97706;">৳3.20/kWh</span></div>
+                        <div class="row"><span class="rlbl">HFO/Diesel</span><div class="bar-t"><div class="bar-f" style="width:75%;background:#EF4444;"></div></div><span class="rval" style="color:#DC2626;">৳7.50/kWh</span></div>
+                        <div class="row"><span class="rlbl">Imported (India)</span><div class="bar-t"><div class="bar-f" style="width:48%;background:#8B5CF6;"></div></div><span class="rval" style="color:#7C3AED;">৳6.80/kWh</span></div>
+                        <div class="row"><span class="rlbl">Solar/Wind</span><div class="bar-t"><div class="bar-f" style="width:22%;background:#22C55E;"></div></div><span class="rval" style="color:#16A34A;">৳2.10/kWh</span></div>
+                        <div class="row"><span class="rlbl">Average mix</span><div class="bar-t"><div class="bar-f" id="avg-bar" style="width:40%;background:#3B82F6;"></div></div><span class="rval" style="color:#2563EB;" id="avg-cost">৳4.12/kWh</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ═══════════════ LAYER 2 — AI AGENT ═══════════════ -->
+    <div class="panel" id="panel-l2">
+        <div class="wrap">
+
+            <div class="sec">🤖 DQN AI Agent — Processing</div>
+            <div class="g23">
+                <div>
+                    <!-- State Vector -->
+                    <div class="card l2-card" style="margin-bottom:16px">
+                        <div class="card-hd"><div class="dot"></div>8-DIMENSIONAL STATE VECTOR s_t</div>
+                        <div id="state-display">
+                            <div class="row"><span class="rlbl">s[0] Hour h_t</span><div class="bar-t"><div class="bar-f" id="sb0" style="width:74%;background:#3B82F6;"></div></div><span class="rval" id="sv0" style="color:#2563EB;">17/23</span></div>
+                            <div class="row"><span class="rlbl">s[1] ToU Price λ_t</span><div class="bar-t"><div class="bar-f" id="sb1" style="width:100%;background:#EF4444;"></div></div><span class="rval" id="sv1" style="color:#DC2626;">৳8.45</span></div>
+                            <div class="row"><span class="rlbl">s[2] Grid Stress</span><div class="bar-t"><div class="bar-f" id="sb2" style="width:92%;background:#EF4444;"></div></div><span class="rval" id="sv2" style="color:#DC2626;">92%</span></div>
+                            <div class="row"><span class="rlbl">s[3] Battery SoC</span><div class="bar-t"><div class="bar-f" id="sb3" style="width:68%;background:#22C55E;"></div></div><span class="rval" id="sv3" style="color:#16A34A;">68%</span></div>
+                            <div class="row"><span class="rlbl">s[4] Occupancy</span><div class="bar-t"><div class="bar-f" id="sb4" style="width:80%;background:#3B82F6;"></div></div><span class="rval" id="sv4" style="color:#2563EB;">80%</span></div>
+                            <div class="row"><span class="rlbl">s[5] Temperature</span><div class="bar-t"><div class="bar-f" id="sb5" style="width:64%;background:#F59E0B;"></div></div><span class="rval" id="sv5" style="color:#D97706;">34°C</span></div>
+                            <div class="row"><span class="rlbl">s[6] Shed Risk</span><div class="bar-t"><div class="bar-f" id="sb6" style="width:20%;background:#EF4444;"></div></div><span class="rval" id="sv6" style="color:#DC2626;">20%</span></div>
+                            <div class="row"><span class="rlbl">s[7] Pending Tasks</span><div class="bar-t"><div class="bar-f" id="sb7" style="width:100%;background:#F59E0B;"></div></div><span class="rval" id="sv7" style="color:#D97706;">EV,Pump</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Q-Values -->
+                    <div class="card l2-card">
+                        <div class="card-hd"><div class="dot"></div>DQN Q-VALUES — 7 ACTIONS</div>
+                        <div id="q-display"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <!-- AI Decision -->
+                    <div class="card l2-card" style="margin-bottom:16px">
+                        <div class="card-hd"><div class="dot"></div>AI DECISION OUTPUT</div>
+                        <div id="ai-decision-box">
+                            <div class="ai-think"><span>🧠</span><span>Run simulation to get AI decision</span><span class="think-dots"><span>.</span><span>.</span><span>.</span></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Reward Breakdown -->
+                    <div class="card l2-card" style="margin-bottom:16px">
+                        <div class="card-hd"><div class="dot"></div>REWARD FUNCTION r(t)</div>
+                        <div style="font-size:11px;color:#64748B;margin-bottom:10px;font-family:monospace;">r(t) = -α·Cost -β·PAR -γc·Comfort +δ·Arbitrage</div>
+                        <div id="reward-display">
+                            <div class="row"><span class="rlbl">Cost Penalty (-α×C)</span><span class="rval" id="r-cost" style="color:#DC2626;">—</span></div>
+                            <div class="row"><span class="rlbl">PAR Reduction (-β)</span><span class="rval" id="r-par" style="color:#2563EB;">—</span></div>
+                            <div class="row"><span class="rlbl">Comfort (-γc×Φ)</span><span class="rval" id="r-comfort" style="color:#16A34A;">—</span></div>
+                            <div class="row"><span class="rlbl">Arbitrage (+δ×B)</span><span class="rval" id="r-arb" style="color:#16A34A;">—</span></div>
+                            <div style="border-top:2px solid #E2E8F0;padding-top:8px;margin-top:6px;" class="row">
+                                <span class="rlbl" style="font-weight:700;color:#0F172A;">Total r(t)</span>
+                                <span class="rval" id="r-total" style="color:#8B5CF6;font-size:18px;font-weight:800;">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Load Shedding Prediction -->
+                    <div class="card l2-card">
+                        <div class="card-hd"><div class="dot"></div>LOAD SHEDDING PREDICTION</div>
+                        <div id="shed-pred">
+                            <div class="notif warn">
+                                <div class="notif-hd"><span class="notif-title">⚠️ High Risk Window</span><span class="notif-time">17:00–22:00</span></div>
+                                <div class="notif-body">Grid stress 92%. Bernoulli(0.20) — 20% chance of outage. AI recommends preemptive action.</div>
+                            </div>
+                            <div class="notif info">
+                                <div class="notif-hd"><span class="notif-title">💡 AI Recommendation</span><span class="notif-time">Now</span></div>
+                                <div class="notif-body" id="ai-rec-text">Run simulation to get recommendations.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Load Control Status -->
+            <div class="sec">🏢 Building Load Control Status</div>
+            <div class="g2">
+                <div class="card l2-card">
+                    <div class="card-hd"><div class="dot"></div>SHIFTABLE LOADS — AI CONTROLLED</div>
+                    <div id="shiftable-loads">
+                        <div class="load-item"><div class="li-icon" style="background:#DBEAFE;">❄️</div><div><div class="li-name">Central AC / Chiller</div><div class="li-sub">1.5 kW · Shiftable · Deadline: User comfort</div></div><div><div class="li-status" id="ls-ac" style="color:#D97706;">Reduced ↓</div><div class="li-power">Action: Curtail 20%</div></div></div>
+                        <div class="load-item"><div class="li-icon" style="background:#DCFCE7;">🔋</div><div><div class="li-name">Battery ESS</div><div class="li-sub">5 kWh · Charge/Discharge · Auto</div></div><div><div class="li-status" id="ls-bat" style="color:#16A34A;">Discharging ↓</div><div class="li-power" id="ls-bat-p">68% SoC</div></div></div>
+                        <div class="load-item"><div class="li-icon" style="background:#DCFCE7;">💧</div><div><div class="li-name">Rooftop Water Pump</div><div class="li-sub">0.55 kW · Shiftable · Deadline: 09:00</div></div><div><div class="li-status" id="ls-pump" style="color:#16A34A;">Deferred ⏰</div><div class="li-power">Run at 06:00</div></div></div>
+                        <div class="load-item"><div class="li-icon" style="background:#EDE9FE;">🚗</div><div><div class="li-name">EV Charging Station</div><div class="li-sub">1.2 kW · Shiftable · Deadline: 23:00</div></div><div><div class="li-status" id="ls-ev" style="color:#D97706;">Deferred ⏰</div><div class="li-power">Resume 23:00</div></div></div>
+                    </div>
+                </div>
+                <div class="card l2-card">
+                    <div class="card-hd"><div class="dot"></div>NON-SHIFTABLE — USER CONTROLLED</div>
+                    <div>
+                        <div class="load-item"><div class="li-icon" style="background:#F1F5F9;">💡</div><div><div class="li-name">Lights & Computers</div><div class="li-sub">0.4 kW · Always ON · User control</div></div><div><div class="li-status" style="color:#16A34A;">User Control ✓</div><div class="li-power">AI never touches</div></div></div>
+                        <div class="load-item"><div class="li-icon" style="background:#F1F5F9;">🌀</div><div><div class="li-name">Fans & Ventilation</div><div class="li-sub">0.2 kW · Always ON · User control</div></div><div><div class="li-status" style="color:#16A34A;">User Control ✓</div><div class="li-power">AI never touches</div></div></div>
+                        <div class="load-item"><div class="li-icon" style="background:#F1F5F9;">🖥️</div><div><div class="li-name">Servers / CCTV</div><div class="li-sub">0.6 kW · Critical · Always ON</div></div><div><div class="li-status" style="color:#16A34A;">Always ON ✓</div><div class="li-power">Critical load</div></div></div>
+                        <div class="load-item"><div class="li-icon" style="background:#F1F5F9;">🔌</div><div><div class="li-name">Emergency Lighting</div><div class="li-sub">0.1 kW · Safety · Always ON</div></div><div><div class="li-status" style="color:#16A34A;">Always ON ✓</div><div class="li-power">Safety system</div></div></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ═══════════════ LAYER 3 — USER ═══════════════ -->
+    <div class="panel" id="panel-l3">
+        <div class="wrap">
+
+            <!-- Account Setup -->
+            <div class="sec">👤 User Account Setup</div>
+            <div class="g2" style="margin-bottom:16px">
+                <div class="form-section">
+                    <div class="form-title"><span>👤</span> Personal Information</div>
+                    <div class="field-row">
+                        <div class="field"><label>Full Name</label><input type="text" id="u-name" value="Md. Rahim Uddin" oninput="updateUser()"></div>
+                        <div class="field"><label>Phone Number</label><input type="text" id="u-phone" value="+880-1711-123456" oninput="updateUser()"></div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field"><label>Area / Zone</label>
+                            <select id="u-area" onchange="updateUser()">
+                                <option value="uttara">Uttara, Dhaka (DESCO)</option>
+                                <option value="gulshan">Gulshan, Dhaka (DESCO)</option>
+                                <option value="mirpur">Mirpur, Dhaka (DPDC)</option>
+                                <option value="motijheel">Motijheel, Dhaka (DPDC)</option>
+                                <option value="gazipur">Gazipur (BPDB)</option>
+                                <option value="narayanganj">Narayanganj (DPDC)</option>
+                            </select>
+                        </div>
+                        <div class="field"><label>Connection Type</label>
+                            <select id="u-conn" onchange="updateUser()">
+                                <option value="E">Commercial (Cat-E)</option>
+                                <option value="C">Small Industry (Cat-C)</option>
+                                <option value="residential">Residential</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field"><label>Meter Serial Number</label><input type="text" id="u-meter" value="DESCO-2024-UTT-88472" oninput="updateUser()"></div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-title"><span>🏢</span> Building / Premises Info</div>
+                    <div class="field"><label>Building Name</label><input type="text" id="u-bldg" value="Uttara Commercial Tower" oninput="updateUser()"></div>
+                    <div class="field-row">
+                        <div class="field"><label>Floor Area (sq ft)</label><input type="number" id="u-area2" value="4500"></div>
+                        <div class="field"><label>Number of Floors</label><input type="number" id="u-floors" value="5"></div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field"><label>Connected Load (kW)</label><input type="number" id="u-load" value="12.5" step="0.5"></div>
+                        <div class="field"><label>Sanctioned Load (kW)</label><input type="number" id="u-sanc" value="15.0" step="0.5"></div>
+                    </div>
+                    <div class="meter-box" style="margin-top:10px">
+                        <div class="meter-num" id="meter-display">DESCO-2024-UTT-88472</div>
+                        <div class="meter-lbl">Smart Meter Serial — Connected to DESCO Grid</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Appliance Registration -->
+            <div class="sec">⚡ Appliance Registration</div>
+            <div class="card l3-card" style="margin-bottom:16px">
+                <div class="card-hd"><div class="dot"></div>MY LOADS — Register your appliances</div>
+                <div class="g3" id="appliance-grid">
+                    <div class="load-item" style="flex-direction:column;align-items:flex-start;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;width:100%">
+                            <div class="li-icon" style="background:#DBEAFE;">❄️</div>
+                            <div style="flex:1"><div class="li-name">AC Unit (1.5 ton)</div><div class="li-sub">Shiftable · AI can reschedule</div></div>
+                            <input type="checkbox" checked style="accent-color:#3B82F6;width:18px;height:18px;">
+                        </div>
+                        <div class="field" style="width:100%;margin:0"><label>Daily Usage Time</label>
+                            <select style="width:100%;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;color:#1E293B;padding:6px 10px;font-size:12px;">
+                                <option>08:00 – 22:00 (peak + off-peak)</option>
+                                <option>09:00 – 18:00 (office hours)</option>
+                                <option>All day</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="load-item" style="flex-direction:column;align-items:flex-start;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;width:100%">
+                            <div class="li-icon" style="background:#DCFCE7;">🔋</div>
+                            <div style="flex:1"><div class="li-name">Battery ESS (5 kWh)</div><div class="li-sub">Auto · AI manages charge/discharge</div></div>
+                            <input type="checkbox" checked style="accent-color:#3B82F6;width:18px;height:18px;">
+                        </div>
+                        <div class="field" style="width:100%;margin:0"><label>Min SoC Limit</label>
+                            <select style="width:100%;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;color:#1E293B;padding:6px 10px;font-size:12px;">
+                                <option>20% (emergency reserve)</option><option>30%</option><option>10%</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="load-item" style="flex-direction:column;align-items:flex-start;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;width:100%">
+                            <div class="li-icon" style="background:#DCFCE7;">💧</div>
+                            <div style="flex:1"><div class="li-name">Water Pump (0.55 kW)</div><div class="li-sub">Shiftable · Deadline: 09:00</div></div>
+                            <input type="checkbox" checked style="accent-color:#3B82F6;width:18px;height:18px;">
+                        </div>
+                        <div class="field" style="width:100%;margin:0"><label>Deadline</label>
+                            <select style="width:100%;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;color:#1E293B;padding:6px 10px;font-size:12px;">
+                                <option>Must complete by 09:00</option><option>Must complete by 08:00</option><option>Anytime</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="load-item" style="flex-direction:column;align-items:flex-start;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;width:100%">
+                            <div class="li-icon" style="background:#EDE9FE;">🚗</div>
+                            <div style="flex:1"><div class="li-name">EV Charging (1.2 kW)</div><div class="li-sub">Shiftable · Deadline: 23:00</div></div>
+                            <input type="checkbox" checked style="accent-color:#3B82F6;width:18px;height:18px;">
+                        </div>
+                        <div class="field" style="width:100%;margin:0"><label>Must complete by</label>
+                            <select style="width:100%;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;color:#1E293B;padding:6px 10px;font-size:12px;">
+                                <option>23:00 tonight</option><option>06:00 tomorrow</option><option>Flexible</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="load-item" style="flex-direction:column;align-items:flex-start;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;width:100%">
+                            <div class="li-icon" style="background:#F1F5F9;">💡</div>
+                            <div style="flex:1"><div class="li-name">Lights (0.4 kW)</div><div class="li-sub">Non-shiftable · User control</div></div>
+                            <input type="checkbox" checked disabled style="accent-color:#94A3B8;width:18px;height:18px;">
+                        </div>
+                        <div style="font-size:11px;color:#64748B;padding:4px 0;">AI never controls this load</div>
+                    </div>
+                    <div class="load-item" style="flex-direction:column;align-items:flex-start;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;width:100%">
+                            <div class="li-icon" style="background:#F1F5F9;">🌀</div>
+                            <div style="flex:1"><div class="li-name">Fans (0.2 kW)</div><div class="li-sub">Non-shiftable · User control</div></div>
+                            <input type="checkbox" checked disabled style="accent-color:#94A3B8;width:18px;height:18px;">
+                        </div>
+                        <div style="font-size:11px;color:#64748B;padding:4px 0;">AI never controls this load</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Dashboard -->
+            <div class="sec">📊 My Dashboard</div>
+            <div class="g4" style="margin-bottom:16px">
+                <div class="kpi"><div class="kpi-val" id="u-today-cost" style="color:#D97706;">৳284</div><div class="kpi-lbl">Today's Cost</div><div class="kpi-sub" style="color:#16A34A;" id="u-save-pct">Saving 24%</div></div>
+                <div class="kpi"><div class="kpi-val" id="u-month-save" style="color:#16A34A;">৳4,320</div><div class="kpi-lbl">Month Saving</div><div class="kpi-sub" style="color:#64748B;">vs uncontrolled</div></div>
+                <div class="kpi"><div class="kpi-val" id="u-par" style="color:#2563EB;">21%</div><div class="kpi-lbl">PAR Reduced</div><div class="kpi-sub" style="color:#64748B;">Peak flattened</div></div>
+                <div class="kpi"><div class="kpi-val" id="u-comfort" style="color:#16A34A;">96%</div><div class="kpi-lbl">Comfort Score</div><div class="kpi-sub" style="color:#64748B;">AI satisfaction</div></div>
+            </div>
+
+            <!-- Notification Center -->
+            <div class="sec">📱 Notification Center</div>
+            <div class="g32">
+                <div class="card l3-card">
+                    <div class="card-hd"><div class="dot"></div>SMS / APP NOTIFICATIONS</div>
+                    <div id="notif-center">
+                        <div class="notif alert">
+                            <div class="notif-hd"><span class="notif-title">🔴 Load Shedding Alert</span><span class="notif-time" id="nt1-time">17:00</span></div>
+                            <div class="notif-body" id="nt1-body">Grid stress 92% in Uttara zone. Load shedding possible 17:00–22:00. AI has activated demand response. Battery discharging, AC reduced. Est. duration if shed: 1–2 hours.</div>
+                        </div>
+                        <div class="notif warn">
+                            <div class="notif-hd"><span class="notif-title">⚠️ Peak Hour — High Price</span><span class="notif-time">17:00</span></div>
+                            <div class="notif-body">Current price: ৳8.45/kWh. AI is deferring EV charging and water pump to 23:00 off-peak (৳4.05/kWh). Estimated saving: ৳45 today.</div>
+                        </div>
+                        <div class="notif info">
+                            <div class="notif-hd"><span class="notif-title">💡 AI Recommendation</span><span class="notif-time" id="nt3-time">Now</span></div>
+                            <div class="notif-body" id="nt3-body">To avoid load shedding impact: Your AC is running. Consider reducing temperature setpoint from 22°C to 24°C during peak hours. This saves ৳18/day and reduces grid stress.</div>
+                        </div>
+                        <div class="notif ok">
+                            <div class="notif-hd"><span class="notif-title">✅ Morning Summary</span><span class="notif-time">06:00</span></div>
+                            <div class="notif-body">Off-peak completed: Battery 95% charged ✓, Water pump done ✓, EV charged ✓. Today's forecast: Peak 17:00–22:00. AI is pre-positioning loads. Projected saving: ৳380.</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-green btn-full" onclick="generateNotif()" style="margin-top:10px;">📱 Generate New Notification</button>
+                </div>
+
+                <div>
+                    <div class="card l3-card" style="margin-bottom:16px">
+                        <div class="card-hd"><div class="dot"></div>USER INSTRUCTIONS TO AI</div>
+                        <div class="field"><label>Tell AI your preference</label>
+                            <select id="u-pref" style="width:100%;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;color:#1E293B;padding:8px 12px;font-size:13px;">
+                                <option value="save">💰 Maximum cost saving (comfort flexible)</option>
+                                <option value="comfort">😊 Maximum comfort (cost secondary)</option>
+                                <option value="balanced">⚖️ Balanced (default)</option>
+                                <option value="green">🌱 Eco mode (minimize grid draw)</option>
+                            </select>
+                        </div>
+                        <div class="field"><label>Emergency Override</label>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn btn-green" style="flex:1;font-size:12px;" onclick="override('fan')">🌀 Fan ON Now</button>
+                                <button class="btn btn-blue" style="flex:1;font-size:12px;" onclick="override('ac')">❄️ AC Full Now</button>
+                                <button class="btn btn-red" style="flex:1;font-size:12px;" onclick="override('all')">⚡ Override All</button>
+                            </div>
+                        </div>
+                        <div id="override-msg"></div>
+                    </div>
+
+                    <div class="card l3-card">
+                        <div class="card-hd"><div class="dot"></div>LOAD SHEDDING SCHEDULE</div>
+                        <div id="shed-schedule">
+                            <div class="row"><span class="rlbl">Today risk window</span><span class="rval" style="color:#DC2626;">17:00–22:00</span></div>
+                            <div class="row"><span class="rlbl">Estimated duration</span><span class="rval" style="color:#D97706;">1–2 hours</span></div>
+                            <div class="row"><span class="rlbl">AI pre-action</span><span class="rval" style="color:#16A34A;">Active ✓</span></div>
+                            <div class="row"><span class="rlbl">Battery reserve</span><span class="rval" id="u-bat-res" style="color:#2563EB;">68%</span></div>
+                            <div class="row"><span class="rlbl">Backup duration</span><span class="rval" style="color:#16A34A;">~3.4 hrs</span></div>
+                            <div style="margin-top:10px;padding:10px;background:#F8FAFC;border-radius:8px;font-size:11px;color:#475569;">
+                                💡 If load shedding occurs: AI will automatically switch to battery backup for critical loads (lights, fans, servers)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- STATUS STRIP -->
+    <div class="status-strip">
+        <span id="status-left">System ready — Enter data and click Run Simulation</span>
+        <span id="status-right">Uttara University EEE | BSc Thesis | DQN Demand Response</span>
+    </div>
+
+    <script>
+        // ══════════════════════════════════════════
+        //  DATA & CONFIG
+        // ══════════════════════════════════════════
+        const TARIFFS = { E: { off: 4.05, peak: 8.45 }, C: { off: 3.50, peak: 5.95 }, F: { off: 3.43, peak: 7.12 } };
+        const SHED_PROB = { 0: 5, 1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 8, 7: 10, 8: 10, 9: 10, 10: 10, 11: 10, 12: 12, 13: 12,
+            14: 12, 15: 15, 16: 18, 17: 22, 18: 24, 19: 22, 20: 20, 21: 18, 22: 15, 23: 8 };
+        const ACTION_LABELS = ['Defer all shiftable loads', 'Reduce AC intensity 20%', 'Run water pump now',
+            'Charge battery (off-peak)', 'Discharge battery (peak offset)', 'Start EV charging',
+            'Partial curtailment 50%'
+        ];
+        const ACTION_ICONS = ['⏸️', '❄️', '💧', '🔋', '⚡', '🚗', '✂️'];
+        let simState = { hour: 17, gen: 2840, dem: 2610, bat: 68, shed: 20, tariff: 'E', simRun: false };
+
+        // ══════════════════════════════════════════
+        //  CLOCK
+        // ══════════════════════════════════════════
+        function tickClock() {
+            const n = new Date();
+            document.getElementById('clock').textContent =
+                String(n.getHours()).padStart(2, '0') + ':' +
+                String(n.getMinutes()).padStart(2, '0') + ':' +
+                String(n.getSeconds()).padStart(2, '0');
+        }
+        setInterval(tickClock, 1000);
+        tickClock();
+
+        // ══════════════════════════════════════════
+        //  LAYER TABS
+        // ══════════════════════════════════════════
+        function showLayer(n) {
+            [1, 2, 3].forEach(i => {
+                document.getElementById('panel-l' + i).classList.toggle('active', i === n);
+                const t = document.getElementById('tab-l' + i);
+                t.className = 'ltab' + (i === n ? ' active-l' + i : '');
+            });
+        }
+
+        // ══════════════════════════════════════════
+        //  TIMELINE
+        // ══════════════════════════════════════════
+        function buildTimeline() {
+            const tl = document.getElementById('timeline');
+            tl.innerHTML = '';
+            const curH = parseInt(document.getElementById('i-hour').value);
+            for (let h = 0; h < 24; h++) {
+                const p = SHED_PROB[h] || 5;
+                const col = p >= 20 ? '#EF4444' : p >= 10 ? '#F59E0B' : '#22C55E';
+                const div = document.createElement('div');
+                div.className = 'ts' + (h === curH ? ' cur' : '');
+                div.style.cssText = `background:${col};opacity:${h===curH?1:.7};`;
+                div.title = `${String(h).padStart(2,'0')}:00 — Shed risk: ${p}%`;
+                div.onclick = (() => {
+                    const hh = h;
+                    return () => {
+                        document.getElementById('i-hour').value = hh;
+                        document.getElementById('hr-show').textContent = hh + ':00';
+                        document.getElementById('hr-v').textContent = hh;
+                        liveUpdate();
+                    };
+                })();
+                tl.appendChild(div);
+            }
+        }
+        buildTimeline();
+
+        // ══════════════════════════════════════════
+        //  LIVE UPDATE (without running full sim)
+        // ══════════════════════════════════════════
+        function liveUpdate() {
+            const h = parseInt(document.getElementById('i-hour').value);
+            document.getElementById('hr-v').textContent = h;
+            buildTimeline();
+            const gen = parseInt(document.getElementById('i-gen').value) || 2840;
+            const dem = parseInt(document.getElementById('i-dem').value) || 2610;
+            const stress = Math.round(dem / gen * 100);
+            const tariff = TARIFFS[document.getElementById('i-tariff').value] || TARIFFS.E;
+            const isPeak = h >= 17 && h <= 22;
+            const price = isPeak ? tariff.peak : tariff.off;
+            const shed = parseInt(document.getElementById('i-shed').value) || 0;
+            const renew = parseInt(document.getElementById('i-renew').value) || 18;
+            const gencost = parseFloat(document.getElementById('i-gencost').value) || 3.20;
+            const reserve = parseInt(document.getElementById('i-reserve').value) || 230;
+
+            setEl('kpi-gen', gen.toLocaleString());
+            setEl('kpi-dem', dem.toLocaleString());
+            setEl('kpi-stress', stress + '%');
+            setEl('kpi-price', '৳' + price.toFixed(2));
+            setEl('kpi-shed', shed + '%');
+            setEl('kpi-reserve', reserve.toLocaleString());
+            setEl('kpi-gencost', '৳' + gencost.toFixed(2));
+            setEl('kpi-renew', renew + '%');
+            setEl('kpi-price-s', isPeak ? 'PEAK HOUR 🔴' : 'Off-Peak 🟢');
+            document.getElementById('kpi-price').style.color = isPeak ? '#DC2626' : '#16A34A';
+            document.getElementById('kpi-stress').style.color = stress >= 90 ? '#DC2626' : stress >= 80 ? '#D97706' :
+            '#16A34A';
+
+            const sb = document.getElementById('kpi-stress-b');
+            sb.className = 'badge ' + (stress >= 90 ? 'b-red' : stress >= 80 ? 'b-amber' : 'b-green');
+            sb.textContent = stress >= 90 ? 'Critical' : stress >= 80 ? 'High' : 'Normal';
+            setEl('kpi-reserve-s', reserve < 200 ? '⚠️ Low' : reserve < 400 ? 'Adequate' : 'Good');
+            const avgC = (gencost * (1 - renew / 100) + 2.10 * (renew / 100)).toFixed(2);
+            setEl('avg-cost', '৳' + avgC + '/kWh');
+            document.getElementById('avg-bar').style.width = Math.min(95, avgC / 8 * 100) + '%';
+        }
+
+        // ══════════════════════════════════════════
+        //  MAIN SIMULATION
+        // ══════════════════════════════════════════
+        function runSimulation() {
+            const btn = document.getElementById('run-l1');
+            btn.disabled = true;
+            btn.textContent = '⟳ Computing...';
+
+            setTimeout(() => {
+                const h = parseInt(document.getElementById('i-hour').value);
+                const gen = parseInt(document.getElementById('i-gen').value) || 2840;
+                const dem = parseInt(document.getElementById('i-dem').value) || 2610;
+                const tariffKey = document.getElementById('i-tariff').value;
+                const tariff = TARIFFS[tariffKey] || TARIFFS.E;
+                const isPeak = h >= 17 && h <= 22;
+                const price = isPeak ? tariff.peak : tariff.off;
+                const shed = parseInt(document.getElementById('i-shed').value) || 0;
+                const stress = Math.round(dem / gen * 100);
+                const bat = 68;
+
+                simState = { h, gen, dem, bat, shed, stress, isPeak, price, tariff, tariffKey, simRun: true };
+
+                const qvals = computeQ(h, price, bat, stress, shed, isPeak);
+                const bestA = qvals.indexOf(Math.max(...qvals));
+
+                liveUpdate();
+                updateL2(h, price, bat, stress, shed, isPeak, qvals, bestA);
+                updateL3(h, price, bat, stress, shed, isPeak, bestA);
+
+                document.getElementById('status-left').textContent =
+                    `✅ Simulation complete — Hour ${String(h).padStart(2,'0')}:00 | Action ${bestA}: ${ACTION_LABELS[bestA]} | Price: ৳${price.toFixed(2)}`;
+
+                btn.disabled = false;
+                btn.textContent = '▶ Run Simulation — Update All Layers';
+            }, 800);
+        }
+
+        function computeQ(h, price, bat, stress, shed, isPeak) {
+            let q = [0, 0, 0, 0, 0, 0, 0];
+            q[0] = isPeak ? 0.3 + stress / 300 : -0.2;
+            q[1] = isPeak ? (0.2 + bat / 200) : (-0.1);
+            q[2] = !isPeak ? 0.7 : -0.4;
+            q[3] = !isPeak && bat < 80 ? (0.8 + (80 - bat) / 100) : -0.5;
+            q[4] = isPeak && bat > 20 ? (0.7 + bat / 200 + stress / 200) : -0.3;
+            q[5] = !isPeak ? 0.6 : -0.6;
+            q[6] = stress > 90 ? 0.5 : (isPeak ? 0.2 : -0.3);
+            if (shed > 20) { q[4] += 0.2;
+                q[0] += 0.1; }
+            const mn = Math.min(...q),
+                mx = Math.max(...q),
+                rng = mx - mn + 0.01;
+            return q.map(v => parseFloat(((v - mn) / rng * 1.6 - 0.1).toFixed(3)));
+        }
+
+        function updateL2(h, price, bat, stress, shed, isPeak, qvals, bestA) {
+            const states = [
+                [h / 23 * 100, '#3B82F6', String(h).padStart(2, '0') + '/23'],
+                [price / 8.45 * 100, isPeak ? '#DC2626' : '#16A34A', '৳' + price.toFixed(2)],
+                [stress, '#DC2626', stress + '%'],
+                [bat, '#16A34A', bat + '%'],
+                [80, '#3B82F6', '80%'],
+                [60, '#D97706', '34°C'],
+                [shed, '#DC2626', shed + '%'],
+                [100, '#D97706', 'EV,Pump'],
+            ];
+            states.forEach(([pct, col, val], i) => {
+                const b = document.getElementById('sb' + i);
+                const v = document.getElementById('sv' + i);
+                if (b) { b.style.width = Math.max(3, pct) + '%';
+                    b.style.background = col; }
+                if (v) { v.textContent = val;
+                    v.style.color = col; }
+            });
+
+            const qd = document.getElementById('q-display');
+            const mn = Math.min(...qvals),
+                mx = Math.max(...qvals),
+                rng = mx - mn + 0.01;
+            qd.innerHTML = qvals.map((q, i) => {
+                const pct = Math.max(5, Math.round((q - mn) / rng * 100));
+                const isBest = i === bestA;
+                const cols = ['#3B82F6', '#22C55E', '#F59E0B', '#8B5CF6', '#3B82F6', '#22C55E', '#EF4444'];
+                return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:12px;color:${isBest?'#0F172A':'#64748B'};width:24px;font-weight:${isBest?'700':'400'};">${ACTION_ICONS[i]}</span>
+              <span style="font-size:12px;color:${isBest?'#0F172A':'#64748B'};flex:1;font-weight:${isBest?'700':'400'};">${ACTION_LABELS[i]}</span>
+              <div style="width:90px;height:18px;background:#F1F5F9;border-radius:6px;overflow:hidden;border:1px solid #E2E8F0;">
+                <div style="width:${pct}%;height:18px;background:${isBest?'#8B5CF6':cols[i]};border-radius:6px;display:flex;align-items:center;padding-left:4px;">
+                  <span style="font-size:10px;color:#FFFFFF;font-weight:700;">${q.toFixed(2)}</span>
+                </div>
+              </div>
+              ${isBest?'<span style="font-size:12px;color:#8B5CF6;font-weight:700;">✓</span>':'<span style="width:14px;"></span>'}
+            </div>`;
+            }).join('');
+
+            const rew = computeReward(bestA, price, bat);
+            const adb = document.getElementById('ai-decision-box');
+            adb.innerHTML = `
+            <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:10px;">
+              <div style="font-size:24px;font-weight:800;color:#0F172A;">Action ${bestA} ${ACTION_ICONS[bestA]}</div>
+              <div style="font-size:14px;color:#1E293B;font-weight:600;margin:4px 0;">${ACTION_LABELS[bestA]}</div>
+              <div style="font-size:12px;color:#64748B;">Q-value = ${qvals[bestA].toFixed(3)} | Confidence: ${Math.round((qvals[bestA]-Math.min(...qvals))/(Math.max(...qvals)-Math.min(...qvals)+0.01)*100)}%</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <span class="badge b-blue">Price: ৳${price.toFixed(2)}</span>
+              <span class="badge ${isPeak?'b-red':'b-green'}">${isPeak?'PEAK 🔴':'Off-Peak 🟢'}</span>
+              <span class="badge b-purple">Stress: ${stress}%</span>
+              <span class="badge b-amber">Shed: ${shed}%</span>
+            </div>`;
+
+            setElC('r-cost', rew.cost, '#DC2626');
+            setElC('r-par', rew.par, '#2563EB');
+            setElC('r-comfort', rew.comfort, parseFloat(rew.comfort) >= 0 ? '#16A34A' : '#DC2626');
+            setElC('r-arb', '+' + rew.arb, '#16A34A');
+            const tot = parseFloat(rew.total);
+            setElC('r-total', rew.total, tot >= 0 ? '#16A34A' : '#DC2626');
+
+            const recTexts = {
+                0: 'Defer non-essential loads during peak. Battery reserved for emergency backup.',
+                1: 'Reduce AC intensity by 20% — saves ৳18/hr during peak. Comfort impact minimal.',
+                2: 'Run water pump now (off-peak). Significant cost saving vs running during peak.',
+                3: 'Charge battery now (off-peak ৳4.05). Will discharge at peak (৳8.45) — arbitrage gain.',
+                4: 'Discharge battery to offset peak grid draw. Reduces cost and grid stress simultaneously.',
+                5: 'Charge EV now during off-peak. Saves ৳5.24/charge vs peak charging.',
+                6: 'Partial curtailment active. Non-critical loads reduced 50% to prevent load shedding.',
+            };
+            setEl('ai-rec-text', recTexts[bestA] || 'Optimize load scheduling based on current grid conditions.');
+
+            setElC('ls-ac', bestA === 1 ? 'Reduced 20% ↓' : bestA === 6 ? 'Curtailed 50% ↓' : 'Normal ✓', bestA === 1 ||
+                bestA === 6 ? '#D97706' : '#16A34A');
+            setElC('ls-bat', bestA === 4 ? 'Discharging ↓' : bestA === 3 ? 'Charging ↑' : 'Idle', bestA === 4 ? '#2563EB' :
+                bestA === 3 ? '#16A34A' : '#64748B');
+            setEl('ls-bat-p', bat + '% SoC');
+            setElC('ls-pump', bestA === 2 ? 'Running NOW ✓' : isPeak ? 'Deferred ⏰ (23:00)' : 'Pending', bestA === 2 ?
+                '#16A34A' : isPeak ? '#D97706' : '#2563EB');
+            setElC('ls-ev', bestA === 5 ? 'Charging ✓' : isPeak ? 'Deferred ⏰ (23:00)' : 'Pending', bestA === 5 ?
+                '#16A34A' : isPeak ? '#D97706' : '#2563EB');
+        }
+
+        function updateL3(h, price, bat, stress, shed, isPeak, bestA) {
+            const saving = isPeak ? 24 : 12;
+            setEl('u-today-cost', '৳' + (Math.round(560 * (1 - saving / 100))));
+            setEl('u-save-pct', 'Saving ' + saving + '%');
+            setEl('u-month-save', '৳' + Math.round(560 * saving / 100 * 30).toLocaleString());
+            setEl('u-bat-res', bat + '%');
+
+            const zone = (document.getElementById('u-area') || {}).value || 'uttara';
+            const zoneNames = { uttara: 'Uttara (DESCO)', gulshan: 'Gulshan (DESCO)', mirpur: 'Mirpur (DPDC)',
+                motijheel: 'Motijheel (DPDC)', gazipur: 'Gazipur (BPDB)', narayanganj: 'Narayanganj (DPDC)' };
+
+            const nt1 = document.getElementById('nt1-body');
+            if (nt1) nt1.textContent =
+                `Grid stress ${stress}% in ${zoneNames[zone]||zone} zone. ${shed>=20?'Load shedding likely':'Load shedding risk: '+shed+'%'} ${isPeak?'17:00–22:00':String(h).padStart(2,'0')+':00'}. AI has activated demand response — ${ACTION_LABELS[bestA]}. Estimated backup: ${bat>30?Math.round(bat*0.05*2)+'+ hours':'Limited — charge battery now'}.`;
+            const nt3 = document.getElementById('nt3-body');
+            if (nt3) {
+                const recs = {
+                    4: `Battery discharging to offset peak. ${bat}% SoC = ~${Math.round(bat*0.05*2)} hours backup. Grid draw reduced.`,
+                    3: `Charging battery during off-peak (৳${price.toFixed(2)}/kWh). Will discharge at peak (৳${TARIFFS[simState.tariffKey||'E'].peak}/kWh). Saves ৳${((TARIFFS[simState.tariffKey||'E'].peak-price)*0.8*0.25).toFixed(2)}/step.`,
+                    1: `AC reduced 20% during peak. Temperature setpoint raised slightly. Saves ৳${(price*1.5*0.2*0.25).toFixed(2)}/step. Override available.`,
+                    0: `All shiftable loads deferred. Grid stress too high. EV + pump will run at 23:00 off-peak.`,
+                };
+                nt3.textContent = recs[bestA] ||
+                    `AI action: ${ACTION_LABELS[bestA]}. Current price: ৳${price.toFixed(2)}/kWh.`;
+            }
+        }
+
+        function computeReward(action, price, bat) {
+            const isPeak = price > 7;
+            const costP = (-(price / 8.45 * 1.5)).toFixed(3);
+            const arb = (action === 4 && bat > 20 ? 0.85 : action === 3 ? 0.7 : 0).toFixed(3);
+            const comf = (action === 6 ? -0.3 : action === 1 && true ? -0.1 : 0.5).toFixed(3);
+            const par = (action === 4 || action === 1 || action === 6 ? 0.35 : -0.1).toFixed(3);
+            const total = (parseFloat(costP) + parseFloat(arb) + parseFloat(comf) + parseFloat(par)).toFixed(3);
+            return { cost: costP, arb, comfort: comf, par, total };
+        }
+
+        function generateNotif() {
+            const h = simState.h || 17;
+            const shed = simState.shed || 20;
+            const isPeak = simState.isPeak || true;
+            const bat = simState.bat || 68;
+            const zone = (document.getElementById('u-area') || {}).value || 'uttara';
+            const zoneN = { uttara: 'Uttara', gulshan: 'Gulshan', mirpur: 'Mirpur', motijheel: 'Motijheel',
+                gazipur: 'Gazipur', narayanganj: 'Narayanganj' };
+            const msgs = [
+                { type: 'alert', title: '🔴 Load Shedding Imminent', body: `${zoneN[zone]||zone} zone: Grid stress critical. Shed probability ${shed}%. AI switching to battery backup mode. Duration estimate: 1–2 hours.` },
+                { type: 'warn', title: '⚡ Price Spike Alert', body: `ToU price is now ৳${simState.price?.toFixed(2)||'8.45'}/kWh. AI has deferred EV charging and water pump to off-peak. Saving: ৳45 today.` },
+                { type: 'ok', title: '✅ Battery Fully Charged', body: `Battery ESS at ${bat}% charged during off-peak (৳4.05/kWh). Ready for peak discharge. Estimated saving: ৳${Math.round(bat*0.8*0.4)}/day.` },
+                { type: 'info', title: '💡 Optimization Suggestion', body: `Turn off non-essential lights on floors 3-5 during peak hours (17:00–22:00). This could save ৳12/day and help prevent load shedding.` },
+            ];
+            const m = msgs[Math.floor(Math.random() * msgs.length)];
+            const nc = document.getElementById('notif-center');
+            const div = document.createElement('div');
+            div.className = 'notif ' + m.type;
+            const now = new Date();
+            div.innerHTML =
+                `<div class="notif-hd"><span class="notif-title">${m.title}</span><span class="notif-time">${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}</span></div><div class="notif-body">${m.body}</div>`;
+            nc.insertBefore(div, nc.firstChild);
+            div.style.animation = 'fadeIn 0.3s ease';
+        }
+
+        function override(what) {
+            const msgs = { fan: '🌀 Fan override accepted. Fan will run at full speed. AI continues managing other loads.',
+                ac: '❄️ AC override accepted. AC running at full capacity now. AI will resume control in 30 min.',
+                all: '⚡ Full override! All loads now under your manual control. AI paused for 60 minutes.' };
+            const el = document.getElementById('override-msg');
+            el.textContent = msgs[what] || 'Override applied.';
+            el.style.display = 'block';
+            el.style.color = what === 'all' ? '#DC2626' : '#16A34A';
+            setTimeout(() => el.style.display = 'none', 5000);
+        }
+
+        function updateUser() {
+            const m = document.getElementById('u-meter');
+            const md = document.getElementById('meter-display');
+            if (m && md) md.textContent = m.value || '—';
+        }
+
+        function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+
+        function setElC(id, val, col) { const e = document.getElementById(id); if (e) { e.textContent = val;
+                e.style.color = col; } }
+
+        // Init
+        liveUpdate();
+    </script>
+</body>
+</html>
